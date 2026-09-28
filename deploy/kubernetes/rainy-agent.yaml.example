@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rainy-kuber
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rainy-kuber-agent
+  namespace: rainy-kuber
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: rainy-kuber-readonly
+rules:
+  - apiGroups: ["", "apps", "batch", "networking.k8s.io", "rbac.authorization.k8s.io"]
+    resources: ["pods","services","configmaps","namespaces","nodes","deployments","daemonsets","statefulsets","replicasets","jobs","cronjobs","ingresses","roles","rolebindings","clusterroles","clusterrolebindings","serviceaccounts"]
+    verbs: ["get","list","watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rainy-kuber-readonly
+subjects:
+  - kind: ServiceAccount
+    name: rainy-kuber-agent
+    namespace: rainy-kuber
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: rainy-kuber-readonly
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: rainy-kuber-agent
+  namespace: rainy-kuber
+type: Opaque
+stringData:
+  api-url: "https://YOUR-RAINY-KUBER.example"
+  agent-token: "PASTE-ROTATABLE-AGENT-TOKEN"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rainy-kuber-agent
+  namespace: rainy-kuber
+spec:
+  schedule: "0 */6 * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: rainy-kuber-agent
+          restartPolicy: Never
+          containers:
+            - name: agent
+              image: ghcr.io/ssboroo/rainy-kuber-agent:latest
+              env:
+                - name: RAINY_API_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: rainy-kuber-agent
+                      key: api-url
+                - name: RAINY_AGENT_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: rainy-kuber-agent
+                      key: agent-token
+                - name: KUBECONFIG
+                  value: /var/run/rainy/kubeconfig
