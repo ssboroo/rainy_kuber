@@ -1,9 +1,17 @@
 {
   "name":"rainy-kuber-web",
   "private":true,
-  "version":"0.1.0",
+  "version":"1.0.0",
   "type":"module",
-  "scripts":{"dev":"vite --host 0.0.0.0","build":"tsc -b && vite build"},
-  "dependencies":{"@vitejs/plugin-react":"latest","vite":"latest","typescript":"latest","react":"latest","react-dom":"latest","lucide-react":"latest","recharts":"latest"},
+  "scripts":{"dev":"vite --host 0.0.0.0","build":"tsc && vite build"},
+  "dependencies":{
+    "@vitejs/plugin-react":"latest",
+    "vite":"latest",
+    "typescript":"latest",
+    "react":"latest",
+    "react-dom":"latest",
+    "lucide-react":"latest",
+    "recharts":"latest"
+  },
   "devDependencies":{}
 }
