@@ -69,5 +69,3 @@ spec:
                     secretKeyRef:
                       name: rainy-kuber-agent
                       key: agent-token
-                - name: KUBECONFIG
-                  value: /var/run/rainy/kubeconfig
