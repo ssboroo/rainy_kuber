@@ -150,3 +150,32 @@ def assistant(x:AssistantIn,ctx=Depends(current_context),db:Session=Depends(get_
 def audit_log(ctx=Depends(current_context),db:Session=Depends(get_db)):
     rows=db.query(AuditLog).filter_by(org_id=ctx["org_id"]).order_by(AuditLog.created_at.desc()).limit(100).all()
     return [{"id":r.id,"action":r.action,"target":r.target,"details":r.details,"created_at":r.created_at} for r in rows]
+
+
+@router.get("/organization")
+def organization(ctx=Depends(current_context),db:Session=Depends(get_db)):
+    o=db.get(Organization,ctx["org_id"])
+    return {"id":o.id,"name":o.name,"slug":o.slug,"plan":o.plan}
+
+@router.get("/team")
+def team(ctx=Depends(current_context),db:Session=Depends(get_db)):
+    rows=db.query(Membership,User).join(User,Membership.user_id==User.id).filter(Membership.org_id==ctx["org_id"]).all()
+    return [{"id":m.id,"user_id":u.id,"name":u.name,"email":u.email,"role":m.role} for m,u in rows]
+
+@router.get("/compliance")
+def compliance(ctx=Depends(current_context),db:Session=Depends(get_db)):
+    open_findings=db.query(Finding).filter(Finding.org_id==ctx["org_id"],Finding.status.in_(["OPEN","ACKNOWLEDGED"])).all()
+    controls=sorted({f.control for f in open_findings if f.control})
+    return {
+      "mode":"evidence-readiness",
+      "note_en":"Framework percentages are not fabricated. RAINY KUBER exposes verified controls and evidence until framework mappings are configured.",
+      "note_mn":"Framework-ийн хувийг зохиомлоор тооцохгүй. Mapping тохируулагдах хүртэл RAINY KUBER баталгаажсан control болон evidence-ийг харуулна.",
+      "open_controls":controls,
+      "open_findings":len(open_findings),
+      "frameworks":[
+        {"name":"CIS Kubernetes Benchmark","status":"mapping-ready"},
+        {"name":"NSA/CISA Kubernetes Hardening","status":"mapping-ready"},
+        {"name":"MITRE ATT&CK for Containers","status":"engine-supported"},
+        {"name":"ISO/IEC 27001","status":"mapping-ready"}
+      ]
+    }
