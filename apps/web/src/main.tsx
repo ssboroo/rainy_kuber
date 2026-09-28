@@ -1,178 +1,73 @@
-import React, { useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import {
-  Activity, Bell, ChevronRight, CircleCheck, Cloud, FileCheck2, LayoutDashboard,
-  Search, Server, Settings, Shield, ShieldAlert, Sparkles, Users, WandSparkles
-} from 'lucide-react';
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from 'recharts';
-import './styles.css';
+import React,{useEffect,useState} from "react";
+import {createRoot} from "react-dom/client";
+import {Activity,ChevronRight,CircleCheck,Cloud,FileCheck2,Languages,LayoutDashboard,LogOut,Search,Server,Settings,Shield,ShieldAlert,Sparkles,Users,WandSparkles} from "lucide-react";
+import {Area,AreaChart,ResponsiveContainer,Tooltip,XAxis} from "recharts";
+import {api,clearToken,hasToken,setToken} from "./api";
+import {Lang,t} from "./i18n";
+import "./styles.css";
 
-const trend = [
-  { day: '22', score: 68 }, { day: '23', score: 70 }, { day: '24', score: 71 },
-  { day: '25', score: 69 }, { day: '26', score: 72 }, { day: '27', score: 74 },
-  { day: '28', score: 73 }
-];
+type Page="overview"|"clusters"|"findings"|"scans"|"compliance"|"reports"|"assistant"|"team"|"settings";
 
-const findings = [
-  { severity: 'CRITICAL', title: 'Privileged container detected', resource: 'deployment/payment-api', ns: 'production', confidence: 'High', scanners: 3 },
-  { severity: 'HIGH', title: 'Wildcard ClusterRole permissions', resource: 'clusterrole/platform-admin', ns: 'global', confidence: 'High', scanners: 1 },
-  { severity: 'HIGH', title: 'Container running as root', resource: 'deployment/web', ns: 'production', confidence: 'High', scanners: 2 },
-  { severity: 'MEDIUM', title: 'Image pull policy is not pinned', resource: 'deployment/worker', ns: 'staging', confidence: 'Medium', scanners: 2 },
-];
-
-const nav = [
-  ['Overview', LayoutDashboard], ['Clusters', Server], ['Findings', ShieldAlert], ['Scans', Activity],
-  ['Compliance', FileCheck2], ['Reports', FileCheck2], ['AI Assistant', WandSparkles], ['Team', Users], ['Settings', Settings]
-] as const;
-
-function App() {
-  const [active, setActive] = useState('Overview');
-  return (
-    <div className="shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <div className="brandMark"><Shield size={23} /></div>
-          <div><div className="brandName">RAINY KUBER</div><div className="brandSub">Cloud Security</div></div>
-        </div>
-
-        <div className="workspace">
-          <div className="workspaceLogo">R</div>
-          <div><b>RAINY Workspace</b><span>Production</span></div>
-          <ChevronRight size={16} />
-        </div>
-
-        <nav>
-          <div className="navLabel">WORKSPACE</div>
-          {nav.map(([label, Icon]) => (
-            <button key={label} className={active === label ? 'navItem active' : 'navItem'} onClick={() => setActive(label)}>
-              <Icon size={18} /><span>{label}</span>
-              {label === 'Findings' && <em>4</em>}
-              {label === 'AI Assistant' && <i>AI</i>}
-            </button>
-          ))}
-        </nav>
-
-        <div className="sideBottom">
-          <div className="planCard">
-            <div className="planIcon"><Sparkles size={18} /></div>
-            <div><b>Pro workspace</b><span>2 of 10 clusters connected</span></div>
-            <div className="progress"><span /></div>
-          </div>
-          <div className="profile">
-            <div className="avatar">SB</div>
-            <div><b>Security Admin</b><span>admin@rainy.mn</span></div>
-          </div>
-        </div>
-      </aside>
-
-      <main className="content">
-        <header className="topbar">
-          <div>
-            <div className="eyebrow">SECURITY POSTURE</div>
-            <h1>{active === 'Overview' ? 'Good evening, Security team' : active}</h1>
-            <p>{active === 'Overview' ? 'Your Kubernetes environment is stable, with a few high-priority items to review.' : 'RAINY KUBER workspace module.'}</p>
-          </div>
-          <div className="topActions">
-            <div className="searchBox"><Search size={18} /><input placeholder="Search findings, clusters..." /></div>
-            <button className="iconButton"><Bell size={19} /><span className="dot" /></button>
-            <button className="primaryButton"><Cloud size={18} /> Add cluster</button>
-          </div>
-        </header>
-
-        {active === 'Overview' ? <Overview /> : <Placeholder title={active} />}
-      </main>
-    </div>
-  );
+function App(){
+ const [lang,setLang]=useState<Lang>((localStorage.getItem("rk_lang") as Lang)||"en");
+ const [authed,setAuthed]=useState(hasToken());
+ const [page,setPage]=useState<Page>("overview");
+ const tr=t[lang];
+ const toggle=()=>{const n:Lang=lang==="en"?"mn":"en";setLang(n);localStorage.setItem("rk_lang",n)};
+ if(!authed)return <Auth lang={lang} toggle={toggle} done={()=>setAuthed(true)}/>;
+ return <div className="shell"><Sidebar page={page} setPage={setPage} tr={tr}/><main className="content">
+  <header className="topbar"><div><div className="eyebrow">{tr.securityPosture}</div><h1>{page==="overview"?tr.hello:(tr as any)[page]}</h1><p>{page==="overview"?tr.helloSub:"RAINY KUBER • Kubernetes Security & Compliance"}</p></div><div className="topActions"><div className="searchBox"><Search size={17}/><input placeholder={tr.search}/></div><button className="langButton" onClick={toggle}><Languages size={16}/>{tr.language}</button><button className="iconButton" title={tr.logout} onClick={()=>{clearToken();setAuthed(false)}}><LogOut size={17}/></button></div></header>
+  <PageView page={page} setPage={setPage} lang={lang} tr={tr}/>
+ </main></div>
 }
 
-function Overview() {
-  return <>
-    <section className="summaryGrid">
-      <div className="scoreCard surface">
-        <div className="sectionLabel">OVERALL SECURITY SCORE</div>
-        <div className="scoreWrap">
-          <div className="scoreRing">
-            <svg viewBox="0 0 120 120">
-              <circle className="track" cx="60" cy="60" r="48" />
-              <circle className="value" cx="60" cy="60" r="48" pathLength="100" />
-            </svg>
-            <div className="scoreCenter"><strong>73</strong><span>/100</span></div>
-          </div>
-          <div className="scoreCopy">
-            <span className="statusPill"><span /> Needs attention</span>
-            <h3>Security posture is improving</h3>
-            <p>Score increased by <b>5 points</b> during the last 7 days.</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="trendCard surface">
-        <div className="cardTitleRow">
-          <div><div className="sectionLabel">7-DAY TREND</div><h3>Posture score</h3></div>
-          <div className="trendGain">+5.2%</div>
-        </div>
-        <ResponsiveContainer width="100%" height={168}>
-          <AreaChart data={trend}>
-            <defs>
-              <linearGradient id="scoreFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#2f7df6" stopOpacity={0.2} />
-                <stop offset="100%" stopColor="#2f7df6" stopOpacity={0.01} />
-              </linearGradient>
-            </defs>
-            <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill:'#94a3b8', fontSize:11 }} />
-            <Tooltip />
-            <Area type="monotone" dataKey="score" stroke="#2f7df6" strokeWidth={3} fill="url(#scoreFill)" />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
-    </section>
-
-    <section className="metricGrid">
-      <Metric icon={<Server />} tone="blue" label="Connected clusters" value="2" meta="All healthy" />
-      <Metric icon={<ShieldAlert />} tone="red" label="Critical findings" value="2" meta="Requires action" />
-      <Metric icon={<Activity />} tone="amber" label="High findings" value="11" meta="3 new this week" />
-      <Metric icon={<CircleCheck />} tone="green" label="Resolved" value="127" meta="+18 this month" />
-    </section>
-
-    <section className="lowerGrid">
-      <div className="findingsCard surface">
-        <div className="panelHead">
-          <div><div className="sectionLabel">PRIORITY QUEUE</div><h2>Top findings</h2><p>Highest-risk issues across your connected clusters.</p></div>
-          <button className="secondaryButton">View all findings <ChevronRight size={16}/></button>
-        </div>
-        <div className="findingList">
-          {findings.map(f => <div className="findingRow" key={f.title}>
-            <div className={'severityMark '+f.severity.toLowerCase()} />
-            <div className="findingMain">
-              <div className="findingTop"><span className={'severityTag '+f.severity.toLowerCase()}>{f.severity}</span><b>{f.title}</b></div>
-              <div className="findingMeta"><code>{f.resource}</code><span>•</span><span>{f.ns}</span></div>
-            </div>
-            <div className="scannerCount"><span>{f.scanners}</span><small>scanners</small></div>
-            <div className="confidence"><span className="confidenceDot"/>{f.confidence} confidence</div>
-            <button className="openButton"><ChevronRight size={18}/></button>
-          </div>)}
-        </div>
-      </div>
-
-      <div className="assistantCard">
-        <div className="assistantIcon"><WandSparkles size={22}/></div>
-        <div className="aiBadge">RAINY AI</div>
-        <h2>Security Copilot</h2>
-        <p>Ask what changed, why a finding matters, or generate a safer Kubernetes configuration.</p>
-        <div className="suggestion">“What are my top 3 risks today?”</div>
-        <div className="suggestion">“Generate a fix for payment-api”</div>
-        <button>Open AI Assistant <ChevronRight size={16}/></button>
-      </div>
-    </section>
-  </>;
+function Auth({lang,toggle,done}:any){
+ const tr=t[lang as Lang]; const [register,setRegister]=useState(false); const [error,setError]=useState("");
+ const [form,setForm]=useState({email:"",password:"",name:"",organization:""});
+ const set=(k:string,v:string)=>setForm({...form,[k]:v});
+ async function submit(e:any){e.preventDefault();setError("");try{const path=register?"/auth/register":"/auth/login";const body=register?form:{email:form.email,password:form.password};const r=await api(path,{method:"POST",body:JSON.stringify(body)});setToken(r.access_token);done()}catch(e:any){setError(e.message)}}
+ return <div className="loginShell"><div className="loginCard"><div className="loginBrand"><div className="brandMark"><Shield/></div><div><b>RAINY KUBER</b><span>Cloud Security</span></div></div><div className="loginHero"><span>KUBERNETES SECURITY • EN / MN</span><h1>{register?tr.register:tr.login}</h1><p>Secure clusters. Understand risk. Fix faster.</p></div><form onSubmit={submit}>
+  {register&&<><label>{tr.yourName}<input value={form.name} onChange={e=>set("name",e.target.value)}/></label><label>{tr.organization}<input required value={form.organization} onChange={e=>set("organization",e.target.value)}/></label></>}
+  <label>{tr.email}<input type="email" required value={form.email} onChange={e=>set("email",e.target.value)}/></label><label>{tr.password}<input type="password" minLength={10} required value={form.password} onChange={e=>set("password",e.target.value)}/></label>{error&&<div className="error">{error}</div>}<button className="primaryWide">{register?tr.createAccount:tr.signIn}</button>
+ </form><button className="textButton" onClick={()=>setRegister(!register)}>{register?tr.backToLogin:tr.register}</button><button className="textButton" onClick={toggle}><Languages size={15}/>{tr.language}</button></div></div>
 }
 
-function Metric({icon,tone,label,value,meta}:any){
-  return <div className="metric surface"><div className={'metricIcon '+tone}>{icon}</div><div><span>{label}</span><strong>{value}</strong><small>{meta}</small></div></div>;
+function Sidebar({page,setPage,tr}:any){const nav:any[]=[["overview",LayoutDashboard],["clusters",Server],["findings",ShieldAlert],["scans",Activity],["compliance",FileCheck2],["reports",FileCheck2],["assistant",WandSparkles],["team",Users],["settings",Settings]];return <aside className="sidebar"><div className="brand"><div className="brandMark"><Shield size={22}/></div><div><div className="brandName">RAINY KUBER</div><div className="brandSub">Cloud Security</div></div></div><div className="workspace"><div className="workspaceLogo">R</div><div><b>RAINY Workspace</b><span>Production</span></div><ChevronRight size={15}/></div><nav><div className="navLabel">WORKSPACE</div>{nav.map(([id,Icon])=><button key={id} onClick={()=>setPage(id)} className={"navItem "+(page===id?"active":"")}><Icon size={17}/><span>{tr[id]}</span>{id==="assistant"&&<i>AI</i>}</button>)}</nav><div className="sideBottom"><div className="planCard"><div className="planIcon"><Sparkles size={17}/></div><div><b>Pro workspace</b><span>Security platform</span></div><div className="progress"><span/></div></div></div></aside>}
+
+function useLoad(path:string,deps:any[]=[]){const [data,setData]=useState<any>(null);const [error,setError]=useState("");const load=()=>api(path).then(setData).catch(e=>setError(e.message));useEffect(()=>{load()},deps);return {data,error,reload:load}}
+
+function PageView({page,setPage,lang,tr}:any){
+ if(page==="overview")return <Overview lang={lang} tr={tr} setPage={setPage}/>;
+ if(page==="clusters")return <Clusters tr={tr}/>;
+ if(page==="findings")return <Findings lang={lang} tr={tr}/>;
+ if(page==="scans")return <Scans tr={tr}/>;
+ if(page==="reports")return <Reports lang={lang} tr={tr}/>;
+ if(page==="assistant")return <Assistant lang={lang} tr={tr}/>;
+ return <div className="emptyState surface"><Shield size={34}/><h2>{tr[page]}</h2><p>Enterprise module foundation is ready for the next integration.</p></div>
 }
 
-function Placeholder({title}:{title:string}){
-  return <div className="placeholder surface"><div className="placeholderIcon"><Shield size={30}/></div><h2>{title}</h2><p>This module is ready for the next implementation phase.</p></div>;
+function Overview({lang,tr,setPage}:any){
+ const {data}=useLoad("/overview");const {data:fs}=useLoad("/findings?lang="+lang,[lang]);
+ if(!data)return <Loading tr={tr}/>;
+ const trend=(data.trend?.length?data.trend:[{score:data.security_score}]).map((x:any,i:number)=>({day:i+1,score:x.score}));
+ return <><section className="summaryGrid"><div className="scoreCard surface"><div className="sectionLabel">{tr.overall}</div><div className="scoreWrap"><div className="scoreRing"><svg viewBox="0 0 120 120"><circle className="track" cx="60" cy="60" r="48"/><circle className="value" cx="60" cy="60" r="48" pathLength="100" style={{strokeDasharray:data.security_score+" 100"}}/></svg><div className="scoreCenter"><strong>{data.security_score}</strong><span>/100</span></div></div><div className="scoreCopy"><span className="statusPill"><span/>{tr.needs}</span><h3>{tr.improving}</h3><p>RAINY KUBER continuously compares posture across scans.</p></div></div></div><div className="trendCard surface"><div className="cardTitleRow"><div><div className="sectionLabel">{tr.trend}</div><h3>{tr.posture}</h3></div></div><ResponsiveContainer width="100%" height={168}><AreaChart data={trend}><defs><linearGradient id="scoreFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#2f7df6" stopOpacity={.2}/><stop offset="100%" stopColor="#2f7df6" stopOpacity={.01}/></linearGradient></defs><XAxis dataKey="day" axisLine={false} tickLine={false}/><Tooltip/><Area type="monotone" dataKey="score" stroke="#2f7df6" strokeWidth={3} fill="url(#scoreFill)"/></AreaChart></ResponsiveContainer></div></section>
+ <section className="metricGrid"><Metric icon={<Server/>} tone="blue" label={tr.connected} value={data.clusters}/><Metric icon={<ShieldAlert/>} tone="red" label={tr.critical} value={data.counts.critical}/><Metric icon={<Activity/>} tone="amber" label={tr.high} value={data.counts.high}/><Metric icon={<CircleCheck/>} tone="green" label={tr.resolved} value={data.resolved}/></section>
+ <section className="lowerGrid"><div className="findingsCard surface"><div className="panelHead"><div><div className="sectionLabel">{tr.priority}</div><h2>{tr.topFindings}</h2><p>{tr.topSub}</p></div><button className="secondaryButton" onClick={()=>setPage("findings")}>{tr.viewAll}<ChevronRight size={15}/></button></div>{(fs||[]).slice(0,4).map((f:any)=><FindingRow key={f.id} f={f}/>)}</div><div className="assistantCard"><div className="assistantIcon"><WandSparkles/></div><div className="aiBadge">RAINY AI</div><h2>{tr.securityCopilot}</h2><p>{tr.copilotSub}</p><button onClick={()=>setPage("assistant")}>{tr.openAI}<ChevronRight size={15}/></button></div></section></>
 }
 
-createRoot(document.getElementById('root')!).render(<App />);
+function Metric({icon,tone,label,value}:any){return <div className="metric surface"><div className={"metricIcon "+tone}>{icon}</div><div><span>{label}</span><strong>{value}</strong><small>RAINY KUBER</small></div></div>}
+function FindingRow({f}:any){return <div className="findingRow"><div className={"severityMark "+f.severity.toLowerCase()}/><div><div className="findingTop"><span className={"severityTag "+f.severity.toLowerCase()}>{f.severity}</span><b>{f.title}</b></div><div className="findingMeta"><code>{f.resource}</code><span>•</span><span>{f.namespace}</span></div></div><div className="scannerCount"><span>{f.found_by?.length||0}</span><small>scanners</small></div><div className="confidence"><span className="confidenceDot"/>{f.confidence}</div><span/></div>}
+
+function Clusters({tr}:any){const {data,reload}=useLoad("/clusters");const [show,setShow]=useState(false);const [name,setName]=useState("");const [env,setEnv]=useState("production");const [token,setAgentToken]=useState("");async function create(){const r=await api("/clusters",{method:"POST",body:JSON.stringify({name,environment:env})});setAgentToken(r.agent_token);setShow(false);setName("");reload()}return <><div className="pageAction"><button className="primaryButton" onClick={()=>setShow(true)}><Cloud size={17}/>{tr.addCluster}</button></div>{token&&<div className="tokenCard surface"><b>{tr.agentToken}</b><code>{token}</code><p>{tr.tokenWarning}</p></div>}<div className="dataGrid">{(data||[]).map((c:any)=><div className="clusterCard surface" key={c.id}><div className="clusterIcon"><Server/></div><div className="clusterHead"><h3>{c.name}</h3><span className={"health "+c.status}>{c.status}</span></div><p>{c.environment}</p><div className="scoreMini"><strong>{c.score}</strong><span>/100</span></div><small>{c.last_seen_at?new Date(c.last_seen_at).toLocaleString():"Waiting for agent"}</small></div>)}</div>{show&&<Modal title={tr.addCluster} close={()=>setShow(false)}><label>{tr.name}<input value={name} onChange={e=>setName(e.target.value)}/></label><label>{tr.environment}<select value={env} onChange={e=>setEnv(e.target.value)}><option>production</option><option>staging</option><option>development</option></select></label><button className="primaryWide" disabled={!name} onClick={create}>{tr.create}</button></Modal>}</>}
+
+function Findings({lang,tr}:any){const {data,reload}=useLoad("/findings?lang="+lang,[lang]);async function update(id:string,status:string){await api("/findings/"+id+"/status",{method:"PATCH",body:JSON.stringify({status})});reload()}return <div className="surface findingsPage">{(data||[]).map((f:any)=><div className="findingFull" key={f.id}><FindingRow f={f}/><div className="remediation"><b>{f.control} • {f.status}</b><p>{f.remediation||"—"}</p><div className="rowActions"><button onClick={()=>update(f.id,"ACKNOWLEDGED")}>{tr.ack}</button><button onClick={()=>update(f.id,"FIXED")}>{tr.markFixed}</button></div></div></div>)}</div>}
+
+function Scans({tr}:any){const {data}=useLoad("/scans");return <div className="surface tableCard"><h2>{tr.scanHistory}</h2><table><thead><tr><th>ID</th><th>{tr.score}</th><th>Critical</th><th>High</th><th>{tr.status}</th><th>Date</th></tr></thead><tbody>{(data||[]).map((s:any)=><tr key={s.id}><td><code>{s.id.slice(0,8)}</code></td><td><b>{s.score}</b></td><td>{s.counts?.critical||0}</td><td>{s.counts?.high||0}</td><td>{s.status}</td><td>{new Date(s.created_at).toLocaleString()}</td></tr>)}</tbody></table></div>}
+
+function Reports({lang,tr}:any){const {data}=useLoad("/reports/summary?lang="+lang,[lang]);function download(){const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="rainy-kuber-report-"+lang+".json";a.click()}return <div className="report surface"><div className="reportHero"><div><div className="sectionLabel">RAINY KUBER</div><h2>{data?.title||tr.report}</h2><p>Audit-ready bilingual security summary.</p></div><button className="primaryButton" onClick={download}>{tr.downloadJson}</button></div>{data&&<><div className="reportScore"><strong>{data.overview.security_score}</strong><span>/100 Security Score</span></div><div className="reportCounts"><div>Critical <b>{data.overview.counts.critical}</b></div><div>High <b>{data.overview.counts.high}</b></div><div>Medium <b>{data.overview.counts.medium}</b></div><div>Low <b>{data.overview.counts.low}</b></div></div></>}</div>}
+
+function Assistant({lang,tr}:any){const [q,setQ]=useState("");const [answer,setAnswer]=useState("");const [busy,setBusy]=useState(false);async function ask(){setBusy(true);try{const r=await api("/assistant",{method:"POST",body:JSON.stringify({question:q,lang})});setAnswer(r.answer)}finally{setBusy(false)}}return <div className="assistantPage surface"><div className="assistantBig"><WandSparkles size={30}/></div><h2>RAINY AI Security Copilot</h2><p>{tr.copilotSub}</p><textarea value={q} onChange={e=>setQ(e.target.value)} placeholder={tr.ask}/><button className="primaryButton" disabled={!q||busy} onClick={ask}>{busy?tr.loading:tr.send}</button>{answer&&<div className="answer">{answer}</div>}</div>}
+function Loading({tr}:any){return <div className="loading">{tr.loading}</div>}
+function Modal({title,close,children}:any){return <div className="modalBack" onMouseDown={close}><div className="modal" onMouseDown={e=>e.stopPropagation()}><div className="modalHead"><h3>{title}</h3><button onClick={close}>×</button></div>{children}</div></div>}
+
+createRoot(document.getElementById("root")!).render(<App/>);
