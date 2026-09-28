@@ -1,32 +1,54 @@
 # RAINY KUBER
 
-Kubernetes Security & Compliance SaaS powered by the TATAR-Kuber engine.
+**Kubernetes Security & Compliance SaaS — English / Монгол.**
 
-## MVP modules
-- Dashboard / Security Score
-- Clusters
-- Findings
-- Scan history
-- Reports
-- AI Security Assistant (integration-ready)
-- Organization / Team foundation
+RAINY KUBER turns TATAR-Kuber scan results into a multi-tenant cloud product with cluster onboarding, persistent findings, scan history, reports, team-ready roles, audit logs and an AI assistant integration layer.
 
-## Stack
-- Frontend: React + Vite + TypeScript
-- Backend: FastAPI
-- Database: PostgreSQL
-- Queue/cache: Redis
-- Security engine: TATAR-Kuber CLI (Apache-2.0)
-- Runtime: Docker Compose
+## Architecture
 
-## Quick start
+```
+Customer Kubernetes
+  → read-only RAINY Agent
+  → TATAR-Kuber scan
+  → HTTPS scan-result.json
+  → FastAPI
+  → PostgreSQL
+  → React SaaS dashboard
+```
+
+The SaaS does **not** need to store customer kubeconfig files. Each cluster receives a rotatable agent token; the agent runs near the cluster and sends only scan output.
+
+## Local start
+
 ```bash
+cp .env.example .env
 docker compose up --build
 ```
 
-Frontend: http://localhost:5173
-API docs: http://localhost:8000/docs
+- Web: http://localhost:8080
+- API: http://localhost:8000
+- API docs: http://localhost:8000/docs
 
-## TATAR-Kuber integration
-The API expects the `tatar-kuber` binary to be available inside the API runtime or via a dedicated worker image.
-The scan service is intentionally isolated behind `app/services/tatar.py` so it can later move to a worker/agent architecture.
+Create the first account from the Register screen.
+
+## Included
+
+- JWT authentication
+- Organization + role foundation
+- Cluster onboarding and rotatable agent token
+- Agent-side TATAR-Kuber scanning
+- Persistent scan history
+- Findings lifecycle: OPEN → ACKNOWLEDGED → FIXED → VERIFIED
+- Security score and trends
+- English / Mongolian UI
+- English / Mongolian report rendering
+- Audit log API
+- AI assistant integration layer with local safe fallback
+- Production Nginx web image
+- PostgreSQL Docker stack
+
+## Before public launch
+
+Use HTTPS, managed PostgreSQL with backups, strong SECRET_KEY, restrictive CORS, secret management, edge rate limiting/WAF, monitoring, alerting, database migrations, email provider configuration and regular token rotation.
+
+See THIRD_PARTY_NOTICES.md for TATAR-Kuber attribution.
